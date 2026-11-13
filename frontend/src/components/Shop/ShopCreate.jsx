@@ -1,0 +1,339 @@
+import { React, useRef, useState } from "react";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import styles from "../../styles/styles";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { server } from "../../server";
+import { toast } from "react-toastify";
+import { RxAvatar } from "react-icons/rx";
+
+const ShopCreate = () => {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [address, setAddress] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [avatar, setAvatar] = useState("");
+  const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [activationLink, setActivationLink] = useState("");
+  const fileInputRef = useRef(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!name.trim()) {
+      return toast.error("Please enter your shop name!");
+    }
+    if (!phoneNumber.trim()) {
+      return toast.error("Please enter your phone number!");
+    }
+    if (!email.trim()) {
+      return toast.error("Please enter your email address!");
+    }
+    if (!address.trim()) {
+      return toast.error("Please enter your address!");
+    }
+    if (!zipCode.trim()) {
+      return toast.error("Please enter your zip code!");
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9 -]{2,11}$/.test(zipCode.trim())) {
+      return toast.error("Enter a valid postal code, not an email address.");
+    }
+    if (password.length < 6) {
+      return toast.error("Password must be at least 6 characters!");
+    }
+    if (!avatar) {
+      return toast.error("Please upload a shop logo!");
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await axios.post(
+        `${server}/shop/create-shop`,
+        {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          avatar,
+          zipCode,
+          address,
+          phoneNumber,
+        },
+        { timeout: 120000 }
+      );
+      toast.success(data.message, { autoClose: 10000 });
+      if (data.activationUrl) {
+        setActivationLink(data.activationUrl);
+        window.open(data.activationUrl, "_blank", "noopener,noreferrer");
+      }
+      setName("");
+      setEmail("");
+      setPassword("");
+      setAvatar("");
+      setZipCode("");
+      setAddress("");
+      setPhoneNumber("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          (error.code === "ECONNABORTED"
+            ? "Server is waking up. Please wait 1 minute and try again."
+          : !error.response
+          ? `Cannot reach the server: ${error.message}. Check that the backend is running.`
+          : "Registration failed. Please check your details and try again.")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const input = e?.target;
+    const fileList = input?.files;
+    const file = fileList?.[0];
+
+    if (!file) {
+      // No file selected (or input cleared) — keep current state unchanged.
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      // reader.result will be a data URL string
+      setAvatar(reader.result);
+    };
+
+    reader.onerror = () => {
+      toast.error("Failed to read the selected file.");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Register as a seller
+        </h2>
+      </div>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-[35rem]">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+            <div>
+              <label
+                htmlFor="shop-name"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Shop Name
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  id="shop-name"
+                  name="name"
+                  autoComplete="organization"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="phone-number"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Phone Number
+              </label>
+              <div className="mt-1">
+                <input
+                  type="tel"
+                  id="phone-number"
+                  name="phone-number"
+                  autoComplete="tel"
+                  required
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Email address
+              </label>
+              <div className="mt-1">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="address"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Address
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  autoComplete="street-address"
+                  required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="zipcode"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Zip Code
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  id="zipcode"
+                  name="shop-postal-code"
+                  autoComplete="postal-code"
+                  inputMode="text"
+                  maxLength={12}
+                  pattern="[A-Za-z0-9][A-Za-z0-9 -]{2,11}"
+                  required
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Password
+              </label>
+              <div className="mt-1 relative">
+                <input
+                  type={visible ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  autoComplete="new-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-2 cursor-pointer bg-transparent border-0 p-0"
+                  onClick={() => setVisible(!visible)}
+                  aria-label={visible ? "Hide password" : "Show password"}
+                >
+                  {visible ? (
+                    <AiOutlineEye size={25} />
+                  ) : (
+                    <AiOutlineEyeInvisible size={25} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="block text-sm font-medium text-gray-700 mb-2">
+                Shop Logo
+              </p>
+              <div className="mt-2 flex items-center">
+                <span className="inline-block h-12 w-12 rounded-full overflow-hidden border border-gray-200">
+                  {avatar ? (
+                    <img
+                      src={avatar}
+                      alt="avatar"
+                      className="h-full w-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <RxAvatar className="h-12 w-12" />
+                  )}
+                </span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="ml-5 flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                >
+                  Upload a file
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full h-[40px] flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+            <div className={`${styles.noramlFlex} w-full`}>
+              <h4>Already have an account?</h4>
+              <Link to="/shop-login" className="text-blue-600 pl-2">
+                Sign in
+              </Link>
+            </div>
+          </form>
+
+          {activationLink && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm font-medium text-green-800 mb-2">
+                Activate your shop (email may take time or not arrive):
+              </p>
+              <a
+                href={activationLink}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-blue-600 underline break-all"
+              >
+                {activationLink}
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ShopCreate;
