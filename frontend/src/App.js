@@ -96,12 +96,10 @@ const PaymentRoute = () => {
     [stripeApikey]
   );
 
-  return stripePromise ? (
+  return (
     <Elements stripe={stripePromise}>
       <PaymentPage />
     </Elements>
-  ) : (
-    <PaymentPage />
   );
 };
 

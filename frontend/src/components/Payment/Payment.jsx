@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import styles from "../../styles/styles";
 import { useEffect } from "react";
 import {
@@ -17,17 +17,40 @@ import { toast } from "react-toastify";
 import { RxCross1 } from "react-icons/rx";
 
 const Payment = () => {
-  const [orderData, setOrderData] = useState([]);
+  const [orderData, setOrderData] = useState(null);
   const [open, setOpen] = useState(false);
   const { user } = useSelector((state) => state.user);
   const navigate = useNavigate();
+  const location = useLocation();
   const stripe = useStripe();
   const elements = useElements();
 
   useEffect(() => {
-    const orderData = JSON.parse(localStorage.getItem("latestOrder"));
-    setOrderData(orderData);
-  }, []);
+    let checkoutOrder = location.state?.orderData;
+    if (!checkoutOrder) {
+      try {
+        const savedOrder = localStorage.getItem("latestOrder");
+        checkoutOrder = savedOrder ? JSON.parse(savedOrder) : null;
+      } catch {
+        toast.error("Your saved checkout details could not be loaded.");
+        navigate("/checkout", { replace: true });
+        return;
+      }
+    }
+
+    if (
+      !checkoutOrder ||
+      !Array.isArray(checkoutOrder.cart) ||
+      checkoutOrder.cart.length === 0 ||
+      !Number.isFinite(Number(checkoutOrder.totalPrice))
+    ) {
+      toast.error("Please complete checkout before selecting a payment method.");
+      navigate("/checkout", { replace: true });
+      return;
+    }
+
+    setOrderData(checkoutOrder);
+  }, [location.state, navigate]);
 
   const createOrder = (data, actions) => {
     return actions.order
@@ -37,7 +60,7 @@ const Payment = () => {
             description: "Sunflower",
             amount: {
               currency_code: "USD",
-              value: orderData?.totalPrice,
+              value: (Number(orderData?.totalPrice) || 0).toFixed(2),
             },
           },
         ],
@@ -54,7 +77,7 @@ const Payment = () => {
   const order = {
     cart: orderData?.cart,
     shippingAddress: orderData?.shippingAddress,
-    user: user && user,
+    user: user || orderData?.user,
     totalPrice: orderData?.totalPrice,
   };
 
@@ -96,11 +119,21 @@ const Payment = () => {
   };
 
   const paymentData = {
-    amount: Math.round(orderData?.totalPrice * 100),
+    amount: Math.round((Number(orderData?.totalPrice) || 0) * 100),
   };
 
   const paymentHandler = async (e) => {
     e.preventDefault();
+    if (!stripe || !elements) {
+      toast.error("Card payments are currently unavailable. Please use another payment method.");
+      return;
+    }
+
+    if (paymentData.amount <= 0) {
+      toast.error("The order total must be greater than zero.");
+      return;
+    }
+
     try {
       const config = {
         headers: {
@@ -127,7 +160,7 @@ const Payment = () => {
         toast.error(result.error.message);
       } else {
         if (result.paymentIntent.status === "succeeded") {
-          order.paymnentInfo = {
+          order.paymentInfo = {
             id: result.paymentIntent.id,
             status: result.paymentIntent.status,
             type: "Credit Card",
@@ -175,6 +208,14 @@ const Payment = () => {
     });
   };
 
+  if (!orderData) {
+    return (
+      <div className="w-full py-12 text-center text-[#000000a4]" role="status">
+        Loading your checkout details...
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col items-center py-8">
       <div className="w-[90%] 1000px:w-[70%] block 800px:flex">
@@ -187,6 +228,7 @@ const Payment = () => {
             createOrder={createOrder}
             paymentHandler={paymentHandler}
             cashOnDeliveryHandler={cashOnDeliveryHandler}
+            stripeAvailable={Boolean(stripe)}
           />
         </div>
         <div className="w-full 800px:w-[35%] 800px:mt-0 mt-8">
@@ -205,6 +247,7 @@ const PaymentInfo = ({
   createOrder,
   paymentHandler,
   cashOnDeliveryHandler,
+  stripeAvailable,
 }) => {
   const [select, setSelect] = useState(1);
 
@@ -230,6 +273,11 @@ const PaymentInfo = ({
         {select === 1 ? (
           <div className="w-full flex border-b">
             <form className="w-full" onSubmit={paymentHandler}>
+              {!stripeAvailable && (
+                <p className="pb-3 text-sm text-red-600" role="status">
+                  Card payments are temporarily unavailable. Choose PayPal or Cash on Delivery.
+                </p>
+              )}
               <div className="w-full flex pb-3">
                 <div className="w-[50%]">
                   <label className="block pb-2">Name On Card</label>
@@ -313,7 +361,8 @@ const PaymentInfo = ({
               <input
                 type="submit"
                 value="Submit"
-                className={`${styles.button} !bg-[#f63b60] text-[#fff] h-[45px] rounded-[5px] cursor-pointer text-[18px] font-[600]`}
+                disabled={!stripeAvailable}
+                className={`${styles.button} !bg-[#f63b60] text-[#fff] h-[45px] rounded-[5px] cursor-pointer text-[18px] font-[600] disabled:cursor-not-allowed disabled:opacity-50`}
               />
             </form>
           </div>
@@ -410,12 +459,15 @@ const PaymentInfo = ({
 };
 
 const CartData = ({ orderData }) => {
-  const shipping = orderData?.shipping?.toFixed(2);
+  const subTotal = Number(orderData?.subTotalPrice) || 0;
+  const shipping = (Number(orderData?.shipping) || 0).toFixed(2);
+  const discount = Number(orderData?.discountPrice) || 0;
+  const total = Number(orderData?.totalPrice) || 0;
   return (
     <div className="w-full bg-[#fff] rounded-md p-5 pb-8">
       <div className="flex justify-between">
         <h3 className="text-[16px] font-[400] text-[#000000a4]">subtotal:</h3>
-        <h5 className="text-[18px] font-[600]">${orderData?.subTotalPrice}</h5>
+        <h5 className="text-[18px] font-[600]">${subTotal.toFixed(2)}</h5>
       </div>
       <br />
       <div className="flex justify-between">
@@ -425,10 +477,10 @@ const CartData = ({ orderData }) => {
       <br />
       <div className="flex justify-between border-b pb-3">
         <h3 className="text-[16px] font-[400] text-[#000000a4]">Discount:</h3>
-        <h5 className="text-[18px] font-[600]">{orderData?.discountPrice? "$" + orderData.discountPrice : "-"}</h5>
+        <h5 className="text-[18px] font-[600]">{discount ? "$" + discount.toFixed(2) : "-"}</h5>
       </div>
       <h5 className="text-[18px] font-[600] text-end pt-3">
-        ${orderData?.totalPrice}
+        ${total.toFixed(2)}
       </h5>
       <br />
     </div>

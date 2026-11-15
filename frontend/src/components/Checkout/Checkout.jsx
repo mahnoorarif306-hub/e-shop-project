@@ -27,9 +27,16 @@ const Checkout = () => {
   }, []);
 
   const paymentSubmit = () => {
-   if(address1 === "" || address2 === "" || zipCode === null || country === "" || city === ""){
-      toast.error("Please choose your delivery address!")
-   } else{
+    if (cartItems.length === 0) {
+      toast.error("Your cart is empty.");
+      return;
+    }
+
+    if (address1 === "" || zipCode === null || country === "" || city === "") {
+      toast.error("Please choose your delivery address!");
+      return;
+    }
+
     const shippingAddress = {
       address1,
       address2,
@@ -39,28 +46,36 @@ const Checkout = () => {
     };
 
     const orderData = {
-      cart,
+      cart: cartItems,
       totalPrice,
       subTotalPrice,
       shipping,
-      discountPrice,
+      discountPrice: Number(discountPrice) || 0,
       shippingAddress,
       user,
-    }
+    };
 
-    // update local storage with the updated orders array
     localStorage.setItem("latestOrder", JSON.stringify(orderData));
-    navigate("/payment");
-   }
+    navigate("/payment", { state: { orderData } });
   };
 
-  const subTotalPrice = cart.reduce(
-    (acc, item) => acc + item.qty * item.discountPrice,
+  const cartItems = Array.isArray(cart) ? cart : [];
+  const getItemPrice = (item) =>
+    Number(
+      item?.discountPrice ??
+        item?.discount_price ??
+        item?.discount ??
+        item?.price ??
+        item?.priceValue
+    ) || 0;
+  const getItemQuantity = (item) => Number(item?.qty) || 0;
+  const subTotalPrice = cartItems.reduce(
+    (acc, item) => acc + getItemQuantity(item) * getItemPrice(item),
     0
   );
 
   // this is shipping cost variable
-  const shipping = subTotalPrice * 0.1;
+  const shipping = Number((subTotalPrice * 0.1).toFixed(2)) || 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,17 +86,18 @@ const Checkout = () => {
       const couponCodeValue = res.data.couponCode?.value;
       if (res.data.couponCode !== null) {
         const isCouponValid =
-          cart && cart.filter((item) => item.shopId === shopId);
+          cartItems.filter((item) => item.shopId === shopId);
 
         if (isCouponValid.length === 0) {
           toast.error("Coupon code is not valid for this shop");
           setCouponCode("");
         } else {
           const eligiblePrice = isCouponValid.reduce(
-            (acc, item) => acc + item.qty * item.discountPrice,
+            (acc, item) => acc + getItemQuantity(item) * getItemPrice(item),
             0
           );
-          const discountPrice = (eligiblePrice * couponCodeValue) / 100;
+          const discountPrice =
+            (eligiblePrice * (Number(couponCodeValue) || 0)) / 100;
           setDiscountPrice(discountPrice);
           setCouponCodeData(res.data.couponCode);
           setCouponCode("");
@@ -94,13 +110,12 @@ const Checkout = () => {
     });
   };
 
-  const discountPercentenge = couponCodeData ? discountPrice : "";
+  const discountPercentenge = couponCodeData ? Number(discountPrice) || 0 : 0;
 
-  const totalPrice = couponCodeData
-    ? (subTotalPrice + shipping - discountPercentenge).toFixed(2)
-    : (subTotalPrice + shipping).toFixed(2);
-
-  console.log(discountPercentenge);
+  const totalPrice = Math.max(
+    0,
+    subTotalPrice + shipping - discountPercentenge
+  ).toFixed(2);
 
   return (
     <div className="w-full flex flex-col items-center py-8">
@@ -263,7 +278,6 @@ const ShippingInfo = ({
               type="address"
               value={address2}
               onChange={(e) => setAddress2(e.target.value)}
-              required
               className={`${styles.input}`}
             />
           </div>

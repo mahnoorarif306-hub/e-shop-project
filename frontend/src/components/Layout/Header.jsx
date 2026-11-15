@@ -21,6 +21,7 @@ import { getAvatarSrc } from "../../utils/avatar";
 
 const Header = ({ activeHeading }) => {
   const { isAuthenticated, user } = useSelector((state) => state.user);
+  const isLoggedIn = Boolean(isAuthenticated || user);
   const { isSeller } = useSelector((state) => state.seller);
   const { wishlist } = useSelector((state) => state.wishlist);
   const { cart } = useSelector((state) => state.cart);
@@ -36,7 +37,7 @@ const Header = ({ activeHeading }) => {
 
   const handleProfileClick = () => {
     setOpen(false);
-    navigate(isAuthenticated ? "/profile" : "/login");
+    navigate(isLoggedIn ? "/profile" : "/login");
   };
 
   const handleSearchChange = (e) => {
@@ -325,11 +326,13 @@ const Header = ({ activeHeading }) => {
                       className="mr-2 h-[35px] w-[35px] rounded-full object-cover"
                     />
                   ) : null}
-                  {isAuthenticated ? "My Profile" : "Login /"}
+                  {isLoggedIn ? "My Profile" : "Login /"}
                 </button>
-                <Link to="/sign-up" className="text-[18px] text-[#000000b7]">
-                  Sign Up
-                </Link>
+                {!isLoggedIn && (
+                  <Link to="/sign-up" className="text-[18px] text-[#000000b7]">
+                    Sign Up
+                  </Link>
+                )}
               </div>
             </div>
           </div>
