@@ -2,6 +2,7 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const catchAsyncErrors = require("./catchAsyncErrors");
 const jwt = require("jsonwebtoken");
 const User = require("../model/user");
+const getJwtSecret = require("../utils/jwtSecret");
 
 exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
   const token = req.cookies?.token;
@@ -12,7 +13,7 @@ exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    decoded = jwt.verify(token, getJwtSecret());
   } catch (error) {
     if (
       error.name === "JsonWebTokenError" ||
@@ -42,7 +43,7 @@ exports.isSeller = catchAsyncErrors(async (req, res, next) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(seller_token, process.env.JWT_SECRET_KEY);
+    decoded = jwt.verify(seller_token, getJwtSecret());
   } catch (error) {
     if (
       error.name === "JsonWebTokenError" ||

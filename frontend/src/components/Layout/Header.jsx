@@ -15,19 +15,16 @@ import { CgProfile } from "react-icons/cg";
 import Cart from "../cart/Cart";
 import Wishlist from "../Wishlist/Wishlist";
 import { RxCross1 } from "react-icons/rx";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { getProductImage, onImgError } from "../../utils/image";
-import axios from "axios";
-import { server } from "../../server";
-import { toast } from "react-toastify";
+import { getAvatarSrc } from "../../utils/avatar";
 
 const Header = ({ activeHeading }) => {
-  const { isAuthenticated } = useSelector((state) => state.user);
+  const { isAuthenticated, user } = useSelector((state) => state.user);
   const { isSeller } = useSelector((state) => state.seller);
   const { wishlist } = useSelector((state) => state.wishlist);
   const { cart } = useSelector((state) => state.cart);
   const { allProducts } = useSelector((state) => state.products);
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchData, setSearchData] = useState(null);
@@ -37,19 +34,9 @@ const Header = ({ activeHeading }) => {
   const [openWishlist, setOpenWishlist] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const handleProfileClick = async () => {
-    if (isAuthenticated) {
-      try {
-        await axios.get(`${server}/user/logout`, { withCredentials: true });
-      } catch (error) {
-        console.error("Failed to log out before opening the login page:", error);
-        toast.error("Could not confirm logout. Please try again.");
-      }
-
-      dispatch({ type: "LogoutUser" });
-    }
-
-    navigate("/login");
+  const handleProfileClick = () => {
+    setOpen(false);
+    navigate(isAuthenticated ? "/profile" : "/login");
   };
 
   const handleSearchChange = (e) => {
@@ -199,10 +186,18 @@ const Header = ({ activeHeading }) => {
               <button
                 type="button"
                 className="relative cursor-pointer mr-[15px]"
-                aria-label="Open login page"
+                aria-label={isAuthenticated ? "Open profile" : "Open login page"}
                 onClick={handleProfileClick}
               >
-                <CgProfile size={30} color="rgb(255 255 255 / 83%)" />
+                {isAuthenticated && user ? (
+                  <img
+                    src={getAvatarSrc(user, 35)}
+                    alt=""
+                    className="h-[35px] w-[35px] rounded-full border border-white object-cover"
+                  />
+                ) : (
+                  <CgProfile size={30} color="rgb(255 255 255 / 83%)" />
+                )}
               </button>
             </div>
 
@@ -320,10 +315,17 @@ const Header = ({ activeHeading }) => {
               <div className="flex w-full justify-center">
                 <button
                   type="button"
-                  className="text-[18px] pr-[10px] text-[#000000b7]"
+                  className="flex items-center text-[18px] pr-[10px] text-[#000000b7]"
                   onClick={handleProfileClick}
                 >
-                  Login /
+                  {isAuthenticated && user ? (
+                    <img
+                      src={getAvatarSrc(user, 35)}
+                      alt=""
+                      className="mr-2 h-[35px] w-[35px] rounded-full object-cover"
+                    />
+                  ) : null}
+                  {isAuthenticated ? "My Profile" : "Login /"}
                 </button>
                 <Link to="/sign-up" className="text-[18px] text-[#000000b7]">
                   Sign Up

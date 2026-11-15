@@ -9,6 +9,7 @@ const sendMail = require("../utils/sendMail");
 const sendToken = require("../utils/jwtToken");
 const { getFrontendUrl } = require("../utils/frontendUrl");
 const { consumeActivationToken } = require("../utils/activationToken");
+const getAuthCookieOptions = require("../utils/authCookieOptions");
 const { isAuthenticated, isAdmin } = require("../middleware/auth");
 
 // create user
@@ -41,7 +42,13 @@ router.post("/create-user", catchAsyncErrors(async (req, res, next) => {
           url: myCloud.secure_url,
         };
       } catch (uploadError) {
-        console.error("Cloudinary upload failed:", uploadError.message);
+        console.error("Cloudinary avatar upload failed:", uploadError.message);
+        return next(
+          new ErrorHandler(
+            "Profile picture upload failed. Please try again or choose another image.",
+            502
+          )
+        );
       }
     } else if (
       avatar &&
@@ -271,9 +278,7 @@ router.get(
     try {
       res.cookie("token", null, {
         expires: new Date(Date.now()),
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
+        ...getAuthCookieOptions(),
       });
       res.status(201).json({
         success: true,

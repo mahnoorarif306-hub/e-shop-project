@@ -1,14 +1,12 @@
+const getAuthCookieOptions = require("./authCookieOptions");
+
 // create token and saving that in cookies
 const sendShopToken = (user, statusCode, res) => {
   const token = user.getJwtToken();
-  const isProduction = process.env.NODE_ENV === "production";
 
-  // Cookies must be compatible with both localhost development and production HTTPS.
   const options = {
     expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-    httpOnly: true,
-    sameSite: isProduction ? "none" : "lax",
-    secure: isProduction,
+    ...getAuthCookieOptions(),
   };
 
   res.status(statusCode).cookie("seller_token", token, options).json({

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const getJwtSecret = require("../utils/jwtSecret");
 
 const shopSchema = new mongoose.Schema({
   name: {
@@ -98,7 +99,7 @@ shopSchema.pre("save", async function () {
 
 // jwt token
 shopSchema.methods.getJwtToken = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET_KEY, {
+  return jwt.sign({ id: this._id }, getJwtSecret(), {
     expiresIn: process.env.JWT_EXPIRES,
   });
 };
