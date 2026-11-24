@@ -63,6 +63,7 @@ import axios from "axios";
 import { server } from "./server";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import { SocketProvider } from "./context/SocketContext";
 
 const PaymentRoute = () => {
   const [stripeApikey, setStripeApiKey] = useState("");
@@ -112,7 +113,8 @@ const App = () => {
   }, []);
 
   return (
-    <BrowserRouter>
+    <SocketProvider>
+      <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -368,7 +370,8 @@ const App = () => {
         pauseOnHover
         theme="dark"
       />
-    </BrowserRouter>
+      </BrowserRouter>
+    </SocketProvider>
   );
 };
 
