@@ -2,7 +2,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const server = http.createServer();
-const io = new Server(server, { path: "/socket.io" });
+// Vercel rewrites /socket.io/* to /api/socket, so the function sees /api/socket.
+const io = new Server(server, { path: "/api/socket" });
 
 let users = [];
 
