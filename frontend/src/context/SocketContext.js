@@ -5,7 +5,7 @@ export const SocketContext = createContext(null);
 export const useSocket = () => useContext(SocketContext);
 
 const SOCKET_URL =
-  process.env.REACT_APP_SOCKET_URL || "http://localhost:4000";
+  process.env.REACT_APP_SOCKET_URL || window.location.origin;
 
 export const SocketProvider = ({ children }) => {
   const socket = useMemo(
