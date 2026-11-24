@@ -7,13 +7,22 @@ const TARGET =
 
 module.exports = async (req, res) => {
   try {
-    let path = req.url || "/";
-    if (path.startsWith("/api/backend")) {
-      path = path.slice("/api/backend".length) || "/";
-      if (!path.startsWith("/api/v2")) path = `/api/v2${path}`;
+    const incoming = new URL(req.url || "/", "http://localhost");
+    let pathname;
+
+    if (incoming.searchParams.has("path")) {
+      const captured = incoming.searchParams.get("path") || "";
+      pathname = `/api/v2/${captured}`;
+      incoming.searchParams.delete("path");
+    } else {
+      pathname = req.url || "/";
+      if (pathname.startsWith("/api/backend")) {
+        pathname = pathname.slice("/api/backend".length) || "/";
+        if (!pathname.startsWith("/api/v2")) pathname = `/api/v2${pathname}`;
+      }
     }
 
-    const target = new URL(path, TARGET);
+    const target = new URL(`${pathname}${incoming.search}`, TARGET);
     const transport = target.protocol === "https:" ? https : http;
     const headers = { ...req.headers, host: target.host };
     delete headers["x-forwarded-host"];
