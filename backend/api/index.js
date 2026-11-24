@@ -1,25 +1,50 @@
-const app = require("../app");
-const connectDatabase = require("../db/Database");
-const cloudinary = require("cloudinary").v2;
+const http = require("http");
+const https = require("https");
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
-
-let dbReady;
-const ensureDatabase = () => {
-  if (!dbReady) dbReady = connectDatabase();
-  return dbReady;
-};
+const TARGET =
+  process.env.RAILWAY_BACKEND_URL ||
+  "https://e-shop-project-production.up.railway.app";
 
 module.exports = async (req, res) => {
   try {
-    await ensureDatabase();
-    return app(req, res);
+    const target = new URL(req.url || "/", TARGET);
+    const transport = target.protocol === "https:" ? https : http;
+    const headers = { ...req.headers, host: target.host };
+    delete headers["x-forwarded-host"];
+    delete headers["x-vercel-forwarded-host"];
+
+    const upstream = transport.request(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || undefined,
+        method: req.method,
+        path: `${target.pathname}${target.search}`,
+        headers,
+      },
+      (upstreamRes) => {
+        res.status(upstreamRes.statusCode || 502);
+        for (const [key, value] of Object.entries(upstreamRes.headers)) {
+          if (value !== undefined) res.setHeader(key, value);
+        }
+        upstreamRes.pipe(res);
+      }
+    );
+
+    upstream.on("error", (error) => {
+      if (!res.headersSent) {
+        res.status(502).json({
+          success: false,
+          message: "Backend proxy unavailable",
+          error: error.message,
+        });
+      } else {
+        res.end();
+      }
+    });
+
+    req.pipe(upstream);
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
